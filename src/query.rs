@@ -6,6 +6,7 @@ use serde::Serialize;
 
 use crate::aggregate::Aggregate;
 use crate::event::EventEnvelope;
+use crate::store::AggregateContext;
 
 /// Each CQRS platform should have one or more queries where it will distribute committed
 /// events.
@@ -27,4 +28,25 @@ pub trait View<A: Aggregate>: Debug + Default + Serialize + DeserializeOwned + S
     /// Each implemented view is responsible for updating its state based on events passed via
     /// this method.
     fn update(&mut self, event: &EventEnvelope<A>);
+}
+
+/// Defines a 'Reactor' trait for handling events in a Saga, coordinating multi-step business processes
+/// by reacting to events from an Aggregate and issuing commands to progress the workflow.
+#[async_trait]
+pub trait Reactor<A>: Send + Sync
+where
+    A: Aggregate,
+{
+    /// Processes a batch of events for a given aggregate, triggering commands to advance a Saga.
+    /// It is also possible to initiate compensating actions to maintain consistency within a
+    /// business process.
+    async fn react<AC>(
+        &self,
+        context: &AC,
+        aggregate_id: &str,
+        services: &A::Services,
+        events: &[EventEnvelope<A>],
+    ) -> Result<Vec<A::Event>, A::Error>
+    where
+        AC: AggregateContext<A> + Send + Sync + 'async_trait;
 }
