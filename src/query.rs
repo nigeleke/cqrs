@@ -33,14 +33,15 @@ pub trait View<A: Aggregate>: Debug + Default + Serialize + DeserializeOwned + S
 /// Defines a 'Reactor' trait for handling events in a Saga, coordinating multi-step business processes
 /// by reacting to events from an Aggregate and issuing commands to progress the workflow.
 #[async_trait]
-pub trait Reactor<A>: Send + Sync
+pub trait Reactor<A, AC>: Send + Sync
 where
     A: Aggregate,
+    AC: AggregateContext<A>,
 {
     /// Processes a batch of events for a given aggregate, triggering commands to advance a Saga.
     /// It is also possible to initiate compensating actions to maintain consistency within a
     /// business process.
-    async fn react<AC>(
+    async fn react(
         &self,
         context: &AC,
         aggregate_id: &str,
@@ -48,5 +49,5 @@ where
         events: &[EventEnvelope<A>],
     ) -> Result<Vec<A::Event>, A::Error>
     where
-        AC: AggregateContext<A> + Send + Sync + 'async_trait;
+        AC: AggregateContext<A> + Send + Sync;
 }
